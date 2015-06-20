@@ -13,7 +13,7 @@ use Zend_Controller_Response_Abstract;
 /**
  * Class Dispatcher
  *
- * @package Webbeheer\Ioc
+ * @package Jeroenvandergeer\ZfIoc
  */
 class Dispatcher extends Zend_Controller_Dispatcher_Standard
 {
