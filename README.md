@@ -8,7 +8,7 @@ composer require jeroenvandergeer/zf-ioc
 // Container of choice, can be any Laravel compatible container
 $container = new \Illuminate\Container\Container();
 
-// Register the container with the Zend registry
+// Optionally register the container with the Zend registry for global binding
 \Zend_Registry::set('container', $container);
 
 // Register the container with the front controller
