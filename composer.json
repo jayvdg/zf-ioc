@@ -1,0 +1,19 @@
+{
+  "name": "jeroenvandergeer/zf-ioc",
+  "description": "Controller action dependency injection using Laravel's IoC container.",
+  "authors": [
+    {
+      "name": "Jeroen van der Geer",
+      "email": "jeroen@vandergeer.eu"
+    }
+  ],
+  "require": {
+    "illuminate/container": "^5.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Jeroenvandergeer\\ZfIoc\\": "src/"
+    }
+  },
+  "minimum-stability": "stable"
+}
