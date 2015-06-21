@@ -2,7 +2,6 @@
 
 namespace Jeroenvandergeer\ZfIoc;
 
-use Illuminate\Contracts\Container\Container;
 use Zend_Controller_Action;
 use Zend_Controller_Action_HelperBroker;
 use Zend_Controller_Action_Interface;
@@ -18,21 +17,19 @@ use Zend_Controller_Response_Abstract;
 class Dispatcher extends Zend_Controller_Dispatcher_Standard
 {
     /**
-     * @var \Illuminate\Contracts\Container\Container
+     * @return \Illuminate\Contracts\Container\Container
      */
-    protected $container;
-
-    /**
-     * @param \Illuminate\Contracts\Container\Container $container
-     */
-    public function setContainer(Container $container)
-    {
-        $this->container = $container;
-    }
-
     public function getContainer()
     {
-        return $this->container;
+        return $this->getFrontController()->getParam('container');
+    }
+
+    /**
+     * @return bool
+     */
+    public function hasContainer()
+    {
+        return null !== $this->getFrontController()->getParam('container');
     }
 
     /**
@@ -45,6 +42,8 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
      */
     public function dispatch(Zend_Controller_Request_Abstract $request, Zend_Controller_Response_Abstract $response)
     {
+        $this->assertContainerIsAvailable();
+
         $this->setResponse($response);
 
         $className = $this->getClassName($request);
@@ -68,7 +67,7 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
         }
 
         try {
-            $this->call($controller, $action);
+            $this->dispatchToController($controller, $action);
         } catch (\Exception $e) {
             // Clean output buffer on error
             $curObLevel = ob_get_level();
@@ -94,9 +93,8 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
      * @param $controller
      * @param $action
      */
-    protected function call(Zend_Controller_Action $controller, $action)
+    protected function dispatchToController(Zend_Controller_Action $controller, $action)
     {
-        // Notify helpers of action preDispatch state
         $helperBroker = new Zend_Controller_Action_HelperBroker($controller);
         $helperBroker->notifyPreDispatch();
 
@@ -106,28 +104,16 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
                 $classMethods = get_class_methods($controller);
             }
 
-            // If pre-dispatch hooks introduced a redirect then stop dispatch
-            // @see ZF-7496
             if (!($this->getResponse()->isRedirect())) {
-                // preDispatch() didn't change the action, so we can continue
-                if ($controller->getInvokeArg('useCaseSensitiveActions') || in_array($action, $classMethods)) {
-                    if ($controller->getInvokeArg('useCaseSensitiveActions')) {
-                        trigger_error(
-                            'Using case sensitive actions without word separators is deprecated; please do not rely on this "feature"'
-                        );
-                    }
-
-                    $this->getContainer()->call([$controller, $action]);
+                if (in_array($action, $classMethods)) {
+                    $this->call($controller, $action);
                 } else {
-                    $this->getContainer()->call([$controller, '_call'], [$action]);
+                    $this->call($controller, '_call', array($action));
                 }
             }
             $controller->postDispatch();
         }
 
-        // whats actually important here is that this action controller is
-        // shutting down, regardless of dispatching; notify the helpers of this
-        // state
         $helperBroker->notifyPostDispatch();
     }
 
@@ -180,14 +166,17 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
     }
 
     /**
-     * @param Zend_Controller_Request_Abstract $request
+     * @param Zend_Controller_Request_Abstract  $request
      * @param                                   $moduleClassName
      *
      * @return mixed
      */
     protected function buildController(Zend_Controller_Request_Abstract $request, $moduleClassName)
     {
-        $controller = new $moduleClassName($request, $this->getResponse(), $this->getParams());
+        $controller = $this->getContainer()->make(
+            $moduleClassName,
+            array($request, $this->getResponse(), $this->getParams())
+        );
 
         return $controller;
     }
@@ -206,6 +195,28 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
             require_once 'Zend/Controller/Dispatcher/Exception.php';
             throw new \Zend_Controller_Dispatcher_Exception(
                 'Controller "'.$moduleClassName.'" is not an instance of Zend_Controller_Action_Interface'
+            );
+        }
+    }
+
+    /**
+     * @param \Zend_Controller_Action $controller
+     * @param                         $action
+     * @param array                   $params
+     */
+    protected function call(Zend_Controller_Action $controller, $action, $params = array())
+    {
+        $this->getContainer()->call(array($controller, $action), $params);
+    }
+
+    /**
+     * @throws \Zend_Controller_Dispatcher_Exception
+     */
+    protected function assertContainerIsAvailable()
+    {
+        if (!$this->hasContainer()) {
+            throw new \Zend_Controller_Dispatcher_Exception(
+                'No container available to resolve from'
             );
         }
     }
