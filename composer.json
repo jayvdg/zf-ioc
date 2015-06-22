@@ -1,6 +1,6 @@
 {
   "name": "jeroenvandergeer/zf-ioc",
-  "description": "Controller action dependency injection using Laravel's IoC container.",
+  "description": "Controller action dependency injection in Zend Framework 1 using Laravel's IoC container.",
   "authors": [
     {
       "name": "Jeroen van der Geer",
