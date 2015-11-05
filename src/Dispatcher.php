@@ -110,7 +110,7 @@ class Dispatcher extends Zend_Controller_Dispatcher_Standard
                 if (in_array($action, $classMethods)) {
                     $this->call($controller, $action);
                 } else {
-                    $this->call($controller, '_call', array($action));
+                    $this->call($controller, '__call', array($action, array()));
                 }
             }
             $controller->postDispatch();
